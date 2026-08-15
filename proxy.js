@@ -17,9 +17,8 @@ const ProxyManager = (() => {
     const expiry = parseInt(localStorage.getItem(TOKEN_EXPIRY_KEY) || '0', 10);
     if (now >= expiry) {
       const newToken = generateToken();
-      const newExpiry = now + TOKEN_LIFETIME_MS;
       localStorage.setItem(TOKEN_KEY, newToken);
-      localStorage.setItem(TOKEN_EXPIRY_KEY, String(newExpiry));
+      localStorage.setItem(TOKEN_EXPIRY_KEY, String(now + TOKEN_LIFETIME_MS));
       return newToken;
     }
     return localStorage.getItem(TOKEN_KEY);
@@ -35,9 +34,9 @@ const ProxyManager = (() => {
   }
 
   function buildProxiedUrl(originalUrl) {
-    const token = getToken();
+    // كل الروابط تمر عبر سيرفر Render
     const encoded = encodeURIComponent(originalUrl);
-    return `/.netlify/functions/proxy?url=${encoded}&token=${token}`;
+    return '/proxy?url=' + encoded;
   }
 
   function minutesLeft() {
