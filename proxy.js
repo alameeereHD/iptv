@@ -34,9 +34,8 @@ const ProxyManager = (() => {
   }
 
   function buildProxiedUrl(originalUrl) {
-    // كل الروابط تمر عبر سيرفر Render
-    const encoded = encodeURIComponent(originalUrl);
-    return '/proxy?url=' + encoded;
+    // كل الروابط تمر عبر سيرفر Render بدون استثناء
+    return '/proxy?url=' + encodeURIComponent(originalUrl);
   }
 
   function minutesLeft() {
