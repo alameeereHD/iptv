@@ -1,0 +1,23 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, OPTIONS"
+    Access-Control-Allow-Headers = "*"
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/*.m3u8"
+  [headers.values]
+    Content-Type = "application/vnd.apple.mpegurl"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/*.ts"
+  [headers.values]
+    Content-Type = "video/mp2t"
+    Access-Control-Allow-Origin = "*"
