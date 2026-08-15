@@ -26,7 +26,7 @@ function buildChannelButtons() {
   CHANNELS.forEach((ch, i) => {
     const btn = document.createElement('button');
     btn.className = 'channel-btn';
-    btn.id = `ch-btn-${i}`;
+    btn.id = 'ch-btn-' + i;
     btn.textContent = ch.name;
     btn.onclick = () => loadChannel(i);
     bar.appendChild(btn);
@@ -37,47 +37,91 @@ function loadChannel(index) {
   const ch = CHANNELS[index];
   if (!ch || !ch.url) { alert('هذه القناة لا تحتوي على رابط بعد.'); return; }
   document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
-  const activeBtn = document.getElementById(`ch-btn-${index}`);
+  const activeBtn = document.getElementById('ch-btn-' + index);
   if (activeBtn) activeBtn.classList.add('active');
   currentIndex = index;
   showLoading();
   destroyCurrentPlayer();
   clearQualityMenu();
   showChannelLabel(ch.name);
-  const url = ProxyManager.buildProxiedUrl(ch.url);
-  if (ch.type === 'hls' || ch.url.includes('.m3u8')) { playHLS(url); } else { playTS(url); }
+
+  const isTS  = ch.type === 'ts' || ch.url.includes('.ts');
+  const isHLS = ch.type === 'hls' || ch.url.includes('.m3u8');
+
+  let url;
+  if (isTS) {
+    url = ch.url; // TS مباشر بدون بروكسي
+  } else if (ch.url.startsWith('https://')) {
+    url = ch.url; // HTTPS مباشر
+  } else {
+    url = ProxyManager.buildProxiedUrl(ch.url); // HTTP عبر بروكسي
+  }
+
+  if (isHLS) { playHLS(url); } else { playTS(url); }
 }
 
 function playHLS(url) {
-  if (typeof Hls === 'undefined') { loadScript('https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js', () => playHLS(url)); return; }
+  if (typeof Hls === 'undefined') {
+    loadScript('https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js', () => playHLS(url));
+    return;
+  }
   if (Hls.isSupported()) {
-    hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 30 });
+    hlsInstance = new Hls({
+      enableWorker: true,
+      lowLatencyMode: true,
+      backBufferLength: 30,
+      xhrSetup: function(xhr) { xhr.withCredentials = false; }
+    });
     hlsInstance.loadSource(url);
     hlsInstance.attachMedia(video);
-    hlsInstance.on(Hls.Events.MANIFEST_PARSED, (e, data) => { hideLoading(); video.play().catch(()=>{}); buildQualityMenu(data.levels); });
-    hlsInstance.on(Hls.Events.ERROR, (e, data) => {
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, function(e, data) {
+      hideLoading();
+      video.play().catch(() => {});
+      buildQualityMenu(data.levels);
+    });
+    hlsInstance.on(Hls.Events.ERROR, function(e, data) {
       if (data.fatal) {
         hideLoading();
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) setTimeout(() => hlsInstance && hlsInstance.startLoad(), 3000);
-        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hlsInstance.recoverMediaError();
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          setTimeout(() => hlsInstance && hlsInstance.startLoad(), 3000);
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          hlsInstance.recoverMediaError();
+        }
       }
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
-    video.addEventListener('loadedmetadata', () => { hideLoading(); video.play().catch(()=>{}); });
+    video.addEventListener('loadedmetadata', () => { hideLoading(); video.play().catch(() => {}); });
   }
 }
 
 function playTS(url) {
-  if (typeof mpegts === 'undefined') { loadScript('https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js', () => playTS(url)); return; }
+  if (typeof mpegts === 'undefined') {
+    loadScript('https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js', () => playTS(url));
+    return;
+  }
   if (mpegts.isSupported()) {
-    mpegtsPlayer = mpegts.createPlayer({ type: 'mpegts', url, isLive: true, enableWorker: true, enableStashBuffer: false });
+    mpegtsPlayer = mpegts.createPlayer({
+      type: 'mpegts',
+      url: url,
+      isLive: true,
+      enableWorker: true,
+      enableStashBuffer: false,
+      stashInitialSize: 128,
+      fixAudioTimestampGap: false,
+      cors: true
+    });
     mpegtsPlayer.attachMediaElement(video);
     mpegtsPlayer.load();
     mpegtsPlayer.play().then(() => hideLoading()).catch(() => hideLoading());
-    mpegtsPlayer.on(mpegts.Events.ERROR, () => hideLoading());
+    mpegtsPlayer.on(mpegts.Events.ERROR, function(et, ed) {
+      console.error('[mpegts]', et, ed);
+      hideLoading();
+    });
   } else {
-    video.src = url; video.load(); video.play().then(() => hideLoading()).catch(() => hideLoading());
+    video.src = url;
+    video.load();
+    video.play().then(() => hideLoading()).catch(() => hideLoading());
   }
 }
 
@@ -92,7 +136,7 @@ function buildQualityMenu(levels) {
   levels.forEach((level, i) => {
     const btn = document.createElement('button');
     btn.className = 'quality-option';
-    btn.textContent = level.height ? `${level.height}p` : `مستوى ${i+1}`;
+    btn.textContent = level.height ? level.height + 'p' : 'مستوى ' + (i + 1);
     btn.onclick = () => setQuality(i, btn);
     qualityMenu.appendChild(btn);
   });
@@ -130,29 +174,37 @@ function showChannelLabel(name) {
 
 function destroyCurrentPlayer() {
   if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-  if (mpegtsPlayer) { mpegtsPlayer.unload(); mpegtsPlayer.detachMediaElement(); mpegtsPlayer.destroy(); mpegtsPlayer = null; }
-  video.removeAttribute('src'); video.load();
+  if (mpegtsPlayer) {
+    mpegtsPlayer.unload();
+    mpegtsPlayer.detachMediaElement();
+    mpegtsPlayer.destroy();
+    mpegtsPlayer = null;
+  }
+  video.removeAttribute('src');
+  video.load();
 }
 
-document.addEventListener('click', (e) => {
-  if (!document.getElementById('quality-wrapper').contains(e.target)) qualityMenu.classList.add('hidden');
+document.addEventListener('click', function(e) {
+  if (!document.getElementById('quality-wrapper').contains(e.target)) {
+    qualityMenu.classList.add('hidden');
+  }
 });
 
 let controlsTimer;
-document.getElementById('player-container').addEventListener('touchstart', () => {
+document.getElementById('player-container').addEventListener('touchstart', function() {
   const pc = document.getElementById('player-container');
   pc.classList.add('show-controls');
   clearTimeout(controlsTimer);
   controlsTimer = setTimeout(() => pc.classList.remove('show-controls'), 3000);
 });
 
-video.addEventListener('play', () => { document.getElementById('btn-play').textContent = '⏸'; });
-video.addEventListener('pause', () => { document.getElementById('btn-play').textContent = '▶'; });
+video.addEventListener('play', function() { document.getElementById('btn-play').textContent = '⏸'; });
+video.addEventListener('pause', function() { document.getElementById('btn-play').textContent = '▶'; });
 video.addEventListener('waiting', showLoading);
 video.addEventListener('playing', hideLoading);
 video.addEventListener('canplay', hideLoading);
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
   ProxyManager.startAutoRenew();
   buildChannelButtons();
   loadChannel(0);
