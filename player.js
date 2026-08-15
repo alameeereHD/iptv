@@ -197,6 +197,10 @@ document.getElementById('player-container').addEventListener('touchstart', funct
   clearTimeout(controlsTimer);
   controlsTimer = setTimeout(() => pc.classList.remove('show-controls'), 3000);
 });
+// إبقاء السيرفر مستيقظاً
+setInterval(() => {
+  http.get('http://localhost:' + PORT + '/', () => {});
+}, 25 * 60 * 1000); // كل 25 دقيقة
 
 video.addEventListener('play', function() { document.getElementById('btn-play').textContent = '⏸'; });
 video.addEventListener('pause', function() { document.getElementById('btn-play').textContent = '▶'; });
