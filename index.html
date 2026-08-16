@@ -1,35 +1,40 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>بث مباشر</title>
+  <title>مشغل القنوات المباشرة</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="player-wrapper">
     <div id="player-container">
-      <video id="video-player" autoplay muted playsinline></video>
-<script src="https://cdn.jsdelivr.net/npm/videojs-flvjs-es6@latest/dist/videojs-flvjs-es6.min.js"></script>
+      <video id="video" autoplay playsinline></video>
+      <div id="overlay">
+        <p id="overlay-text">اختر قناة من القائمة أدناه</p>
+      </div>
       <div id="controls">
-        <div id="controls-left">
-          <button id="btn-play" onclick="togglePlay()">▶</button>
-          <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1" oninput="setVolume(this.value)" />
+        <div id="ctrl-left">
+          <button onclick="togglePlay()" id="btn-play">⏸</button>
+          <input type="range" id="vol" min="0" max="1" step="0.05" value="1" oninput="setVolume(this.value)" />
         </div>
-        <div id="controls-right">
-          <div id="quality-wrapper">
-            <button id="btn-quality" onclick="toggleQualityMenu()">⚙ جودة</button>
-            <div id="quality-menu" class="hidden"></div>
+        <div id="ctrl-right">
+          <div id="quality-wrap">
+            <button onclick="toggleQuality()" id="btn-quality">⚙ جودة</button>
+            <div id="quality-menu"></div>
           </div>
-          <button id="btn-fullscreen" onclick="toggleFullscreen()">⛶</button>
+          <button onclick="toggleFS()">⛶</button>
+          <span id="status-badge">متوقف</span>
         </div>
       </div>
-      <div id="channel-label"></div>
+      <div id="ch-label"></div>
     </div>
   </div>
-  <div id="channels-bar"></div>
-  <script src="proxy.js"></script>
-  <script src="channels.js"></script>
-  <script src="player.js"></script>
-</body>
-</html>
+  <div id="channels-section">
+    <div id="channels-header">
+      <span id="channels-title">القنوات</span>
+      <button id="btn-add" onclick="toggleForm()">إضافة قناة</button>
+    </div>
+    <div id="add-form" class="
